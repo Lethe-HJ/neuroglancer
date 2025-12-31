@@ -1,9 +1,3 @@
-让我详细分析Neuroglancer中这些遍历优化的具体实现方式：
-
-[3 tools called]
-
-基于源码分析，我来详细描述Neuroglancer中这些遍历优化的具体实现：
-
 # Neuroglancer中的Chunk遍历优化详解
 
 ## 1. 层次遍历（Hierarchical Traversal）
@@ -14,7 +8,7 @@ Neuroglancer使用八叉树来组织多尺度数据，实现层次遍历：
 
 ```typescript
 // 八叉树数据结构
-interface MultiscaleMeshManifest {
+interface MultiscaleMeshManifest { // 多尺度网格清单
   /**
    * 八叉树数组：[n, 5] 格式
    * 每行: [x, y, z, childBegin, childEndAndEmpty]
@@ -32,7 +26,7 @@ interface MultiscaleMeshManifest {
 
 ### 层次遍历实现
 
-```133:171:src/neuroglancer/mesh/multiscale.ts
+```ts
 function handleChunk(lod: number, row: number, priorLodScale: number) {
   const size = 1 << lod;  // 2^lod，当前LOD的chunk大小倍数
   const rowOffset = row * 5;
@@ -97,7 +91,7 @@ function handleChunk(lod: number, row: number, priorLodScale: number) {
 
 ### AABB可见性测试的早期退出
 
-```150:168:src/neuroglancer/mesh/multiscale.ts
+```ts
 if (isAABBVisible(xLower, yLower, zLower, xUpper, yUpper, zUpper, clippingPlanes)) {
   // 只有当前节点可见时，才继续处理
   // ...
@@ -166,7 +160,7 @@ if (isEmpty) {
 
 Neuroglancer使用标记生成来避免重复处理：
 
-```61:62:src/neuroglancer/chunk_manager/backend.ts
+```ts
 // Used by layers for marking chunks for various purposes.
 markGeneration = -1;
 ```
@@ -210,14 +204,14 @@ function getChunkAtPosition(worldPos: vec3): ChunkCoordinate {
 
 ### 像素大小计算
 
-```151:152:src/neuroglancer/mesh/multiscale.ts
+```ts
 const minW = Math.max(minWClip, getBoxW(xLower, yLower, zLower, xUpper, yUpper, zUpper));
 const pixelSize = minW / scaleFactor;
 ```
 
 ### LOD选择逻辑
 
-```154:167:src/neuroglancer/mesh/multiscale.ts
+```ts
 if (priorLodScale === 0 || pixelSize * detailCutoff < priorLodScale) {
   const lodScale = lodScales[lod];
   if (lodScale !== 0) {
