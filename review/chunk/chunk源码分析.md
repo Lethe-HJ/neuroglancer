@@ -114,15 +114,28 @@ copyToGPU(gl: GL, attributeFormats: TextureFormat[]) {
 解释:
 
 具体限制：
-GPU内存：500MB (5e8字节)，最多10万个chunk
-系统内存：1GB (1e9字节)，最多100万个chunk
-单个TypedArray限制：受浏览器实现影响，通常约2GB-4GB
-Worker内存：与主线程共享相同的限制
+1. GPU内存：500MB (5e8字节)，最多10万个chunk
+2. 系统内存：1GB (1e9字节)，最多100万个chunk
+3. 单个TypedArray限制：受浏览器实现影响，通常约2GB-4GB
+4. Worker内存：与主线程共享相同的限制
+
 实际约束因素：
-浏览器进程内存限制
-设备物理内存
-GPU显存大小
-操作系统虚拟内存管理
+1. 浏览器进程内存限制
+2. 设备物理内存
+3. GPU显存大小
+4. 操作系统虚拟内存管理
+
+1个chunk对应一个逻辑数据单元, 1个chunk中可能有多个类型数组
+
+```ts
+{
+  gpuMemory: new CapacitySpecification({defaultItemLimit: 1e5, defaultSizeLimit: 5e8}),
+  systemMemory: new CapacitySpecification({defaultItemLimit: 1e6, defaultSizeLimit: 1e9}),
+  download: new CapacitySpecification({defaultItemLimit: 100, defaultSizeLimit: Number.POSITIVE_INFINITY}),
+  compute: new CapacitySpecification({defaultItemLimit: 128, defaultSizeLimit: 5e8}),
+}
+```
+
 
 3. 疑问3: 对于chunk的渲染方式是怎样的, 是全部一起刷还是指定区域渲染, 其他区域维持原样?
 
@@ -130,8 +143,7 @@ GPU显存大小
 
 结论: 目前ng的代码中, 对于单个层来说 是视锥体内的区域全部一起渲染, 而不是对于更新的chunk所在的区域进行单独指定区域渲染, 虽然这个做法webgl支持且可能对性能提升较大, 但是实现复杂. 简单来说就是视锥体内的chunk需要逐层全部渲染, 而不是指定区域做增量渲染
 
-渲染策略：增量渲染
-基于视锥体的选择性渲染
+渲染策略：基于视锥体的选择性渲染
 
 ```ts
 isReady(renderContext: PerspectiveViewReadyRenderContext, attachment: VisibleLayerInfo<PerspectivePanel, ThreeDimensionalRenderLayerAttachmentState>) {
@@ -349,14 +361,3 @@ export function getPriorityTier(visibility: number): ChunkPriorityTier {
 处理阶段: 下载完成后在Worker中处理，状态为SYSTEM_MEMORY_WORKER
 传输阶段: 数据传输到主线程，状态为SYSTEM_MEMORY
 渲染准备: 上传到GPU内存，状态为GPU_MEMORY，可用于渲染
-
-## 容量管理
-
-```ts
-{
-  gpuMemory: new CapacitySpecification({defaultItemLimit: 1e5, defaultSizeLimit: 5e8}),
-  systemMemory: new CapacitySpecification({defaultItemLimit: 1e6, defaultSizeLimit: 1e9}),
-  download: new CapacitySpecification({defaultItemLimit: 100, defaultSizeLimit: Number.POSITIVE_INFINITY}),
-  compute: new CapacitySpecification({defaultItemLimit: 128, defaultSizeLimit: 5e8}),
-}
-```
